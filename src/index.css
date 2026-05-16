@@ -62,5 +62,9 @@ input, textarea, select { font-family: inherit; }
 .modal-exit { animation: modalOut 0.24s ease both; }
 .backdrop-enter { animation: fadeIn 0.18s ease both; }
 .backdrop-exit { animation: fadeOut 0.22s ease both; }
+@keyframes saveFlashIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { scrollbar-width: none; }

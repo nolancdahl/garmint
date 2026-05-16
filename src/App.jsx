@@ -32,21 +32,42 @@ function AppShell() {
   const [selectedWishlistItem, setSelectedWishlistItem] = useState(null)
   const [inspoItems, setInspoItems] = useState(() => loadJson(INSPO_KEY))
 
-  // Track whether updates come from Firestore (to avoid re-uploading)
-  const fromFirestore = useRef(false)
+  // Track which keys were just updated from Firestore (per-key, not shared boolean)
+  const firestoreKeys = useRef(new Set())
+  const [saveFlash, setSaveFlash] = useState(false)
+  const saveTimer = useRef(null)
+
+  const showSaveFlash = useCallback(() => {
+    setSaveFlash(true)
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => setSaveFlash(false), 1500)
+  }, [])
 
   // Save to localStorage + Firestore
   const persist = useCallback((key, items) => {
     saveJson(key, items)
-    if (!fromFirestore.current && user) {
+    if (firestoreKeys.current.has(key)) {
+      firestoreKeys.current.delete(key)
+    } else if (user) {
       uploadToFirestore(user.uid, key, items)
+      showSaveFlash()
     }
-    fromFirestore.current = false
-  }, [user])
+  }, [user, showSaveFlash])
 
-  useEffect(() => { persist(CLOSET_KEY, closetItems) }, [closetItems, persist])
-  useEffect(() => { persist(WISHLIST_KEY, wishlistItems) }, [wishlistItems, persist])
-  useEffect(() => { persist(INSPO_KEY, inspoItems) }, [inspoItems, persist])
+  // Skip initial mount persist (data already in localStorage)
+  const mounted = useRef(false)
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return }
+    persist(CLOSET_KEY, closetItems)
+  }, [closetItems, persist])
+  useEffect(() => {
+    if (!mounted.current) return
+    persist(WISHLIST_KEY, wishlistItems)
+  }, [wishlistItems, persist])
+  useEffect(() => {
+    if (!mounted.current) return
+    persist(INSPO_KEY, inspoItems)
+  }, [inspoItems, persist])
 
   // Subscribe to Firestore real-time updates when logged in
   useEffect(() => {
@@ -58,9 +79,9 @@ function AppShell() {
     }
 
     const unsub = subscribeToAll(user.uid, {
-      [CLOSET_KEY]: (items) => { fromFirestore.current = true; setClosetItems(items) },
-      [WISHLIST_KEY]: (items) => { fromFirestore.current = true; setWishlistItems(items) },
-      [INSPO_KEY]: (items) => { fromFirestore.current = true; setInspoItems(items) },
+      [CLOSET_KEY]: (items) => { firestoreKeys.current.add(CLOSET_KEY); setClosetItems(items) },
+      [WISHLIST_KEY]: (items) => { firestoreKeys.current.add(WISHLIST_KEY); setWishlistItems(items) },
+      [INSPO_KEY]: (items) => { firestoreKeys.current.add(INSPO_KEY); setInspoItems(items) },
     })
     return unsub
   }, [user])
@@ -178,6 +199,28 @@ function AppShell() {
       <main key={currentPage} className="page-enter" style={{ padding: '18px 18px 32px', maxWidth: '1100px', margin: '0 auto' }}>
         {renderPage()}
       </main>
+      {saveFlash && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(142px + env(safe-area-inset-bottom, 0px))',
+          right: '22px',
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: '#2ecc71',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 103,
+          boxShadow: '0 4px 14px rgba(46, 204, 113, 0.4)',
+          animation: 'saveFlashIn 0.25s ease-out',
+          fontSize: '20px',
+          fontWeight: 700,
+        }}>
+          ✓
+        </div>
+      )}
       <FloatingChatButton onClick={() => setChatOpen((v) => !v)} active={chatOpen} />
       <BottomNav pages={navPages} current={currentPage} onChange={(id) => { setCurrentPage(id); closeAll() }} />
       {chatMounted && <ChatPopup isOpen={chatOpen} onClose={() => setChatOpen(false)} />}
