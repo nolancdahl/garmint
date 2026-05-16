@@ -23,45 +23,39 @@ const loadColors = () => {
 }
 
 const WishlistTile = ({ item, onClick, cols = 3, onUpdate }) => {
-  // Scale factor: fewer columns = bigger tiles = bigger text
-  const s = Math.max(0.6, Math.min(2, 3 / cols))
-  const titleSize = 11.5 * s
-  const publisherSize = 9 * s
-  const priceSize = 9 * s
-  const tagSize = 8 * s
-  const padding = `${Math.round(22 * s)}px ${Math.round(10 * s)}px ${Math.round(8 * s)}px`
-  const pillPad = `${Math.round(2 * s)}px ${Math.round(7 * s)}px`
-  const tagPad = `${Math.round(2 * s)}px ${Math.round(6 * s)}px`
-
   const overlay = (
     <div style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
-      padding,
+      padding: '33px 15px 12px',
       background: 'linear-gradient(to top, rgba(19,37,27,0.78), transparent)',
       color: COLORS.cream, zIndex: 1,
     }}>
-      {item.publisher && (
-        <div style={{ fontFamily: FONTS.sub, fontSize: `${publisherSize}px`, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 600 }}>
-          {item.publisher}
+      {item.brand && (
+        <div style={{
+          fontFamily: FONTS.sub, fontSize: '10px', opacity: 0.7,
+          textTransform: 'uppercase', letterSpacing: '0.16em', fontWeight: 600,
+        }}>
+          {item.brand}
         </div>
       )}
       <div style={{
-        fontFamily: FONTS.sub, fontSize: `${titleSize}px`, fontWeight: 600, lineHeight: 1.2,
-        overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', marginTop: '2px',
+        fontFamily: FONTS.sub, fontSize: '13.5px', fontWeight: 600, lineHeight: 1.2,
+        overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+        marginTop: item.brand ? '2px' : 0,
       }}>
         {item.title}
       </div>
-      <div style={{ display: 'flex', gap: `${Math.round(4 * s)}px`, marginTop: `${Math.round(4 * s)}px`, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
         {item.price && (
           <span style={{
-            fontFamily: FONTS.sub, fontSize: `${priceSize}px`, padding: pillPad,
+            fontFamily: FONTS.sub, fontSize: '10px', padding: '3px 10px',
             background: 'rgba(46,204,113,0.35)', borderRadius: '999px',
             fontWeight: 700, letterSpacing: '0.02em',
           }}>${item.price}</span>
         )}
         {item.tags && item.tags.map((t) => (
           <span key={t} style={{
-            fontFamily: FONTS.sub, fontSize: `${tagSize}px`, padding: tagPad,
+            fontFamily: FONTS.sub, fontSize: '9px', padding: '3px 9px',
             background: 'rgba(244,238,224,0.25)', borderRadius: '999px',
             letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
           }}>{t}</span>
@@ -95,7 +89,7 @@ const WishlistTile = ({ item, onClick, cols = 3, onUpdate }) => {
             width: '100%', height: '100%', background: COLORS.creamDeep,
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textFaint,
           }}>
-            <LinkIcon size={Math.round(28 * s)} strokeWidth={1.2} />
+            <LinkIcon size={28} strokeWidth={1.2} />
           </div>
           {overlay}
         </>
