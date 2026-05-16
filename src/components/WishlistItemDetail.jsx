@@ -475,50 +475,71 @@ export const WishlistItemDetail = ({ item, onClose, onDelete, onUpdate }) => {
           {/* Price */}
           {item.price && (
             <div style={{
-              fontFamily: FONTS.sub, fontSize: '16px', color: COLORS.green,
-              fontWeight: 700, marginTop: '10px',
+              fontFamily: FONTS.sub, fontSize: '14px', color: COLORS.textMuted,
+              fontWeight: 500, marginTop: '8px',
             }}>
               ${item.price}
             </div>
           )}
 
-          {/* Categories */}
-          {item.categories && item.categories.length > 0 && (
-            <div style={{ marginTop: '14px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {item.categories.map((c) => (
-                <span key={c} style={{
-                  fontFamily: FONTS.sub, fontSize: '10px', padding: '4px 10px',
-                  background: COLORS.green, color: COLORS.cream, borderRadius: '999px',
-                  textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600,
-                }}>{c}</span>
-              ))}
-            </div>
-          )}
-
-          {/* Type (tags) */}
-          {item.tags && item.tags.length > 0 && (
-            <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {item.tags.map((t) => (
-                <span key={t} style={{
-                  fontFamily: FONTS.sub, fontSize: '10px', padding: '4px 10px',
-                  background: 'transparent', color: COLORS.green,
-                  border: `1px solid ${COLORS.greenLine}`, borderRadius: '999px',
-                  textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500,
-                }}>{t}</span>
-              ))}
-            </div>
-          )}
-
-          {/* Colors */}
-          {item.colors && item.colors.length > 0 && (
-            <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {item.colors.map((c) => (
-                <span key={c} style={{
-                  fontFamily: FONTS.sub, fontSize: '10px', padding: '4px 10px',
-                  background: COLORS.creamDeep, color: COLORS.textMuted,
-                  borderRadius: '999px', letterSpacing: '0.1em', fontWeight: 500,
-                }}>{c}</span>
-              ))}
+          {/* Category / Style / Color — 3-column layout */}
+          {((item.categories && item.categories.length > 0) || (item.tags && item.tags.length > 0) || (item.colors && item.colors.length > 0)) && (
+            <div style={{
+              display: 'flex', marginTop: '16px',
+              border: `1px solid ${COLORS.greenLine}`, borderRadius: '10px',
+              overflow: 'hidden', background: COLORS.white,
+            }}>
+              {/* Category column */}
+              <div style={{ flex: 1, padding: '10px 8px', borderRight: `1px solid ${COLORS.greenLine}` }}>
+                <div style={{
+                  fontFamily: FONTS.sub, fontSize: '9px', textTransform: 'uppercase',
+                  letterSpacing: '0.16em', fontWeight: 600, color: COLORS.textMuted, marginBottom: '8px',
+                }}>Category</div>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {item.categories && item.categories.map((c) => (
+                    <span key={c} style={{
+                      fontFamily: FONTS.sub, fontSize: '10px', padding: '3px 8px',
+                      background: COLORS.white, color: COLORS.textMuted,
+                      border: `1px solid ${COLORS.creamDeep}`, borderRadius: '999px',
+                      letterSpacing: '0.06em', fontWeight: 500,
+                    }}>{c}</span>
+                  ))}
+                </div>
+              </div>
+              {/* Style column */}
+              <div style={{ flex: 1, padding: '10px 8px', borderRight: `1px solid ${COLORS.greenLine}` }}>
+                <div style={{
+                  fontFamily: FONTS.sub, fontSize: '9px', textTransform: 'uppercase',
+                  letterSpacing: '0.16em', fontWeight: 600, color: COLORS.textMuted, marginBottom: '8px',
+                }}>Style</div>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {item.tags && item.tags.map((t) => (
+                    <span key={t} style={{
+                      fontFamily: FONTS.sub, fontSize: '10px', padding: '3px 8px',
+                      background: COLORS.white, color: COLORS.textMuted,
+                      border: `1px solid ${COLORS.creamDeep}`, borderRadius: '999px',
+                      letterSpacing: '0.06em', fontWeight: 500,
+                    }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+              {/* Color column */}
+              <div style={{ flex: 1, padding: '10px 8px' }}>
+                <div style={{
+                  fontFamily: FONTS.sub, fontSize: '9px', textTransform: 'uppercase',
+                  letterSpacing: '0.16em', fontWeight: 600, color: COLORS.textMuted, marginBottom: '8px',
+                }}>Color</div>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {item.colors && item.colors.map((c) => (
+                    <span key={c} style={{
+                      fontFamily: FONTS.sub, fontSize: '10px', padding: '3px 8px',
+                      background: COLORS.white, color: COLORS.textMuted,
+                      border: `1px solid ${COLORS.creamDeep}`, borderRadius: '999px',
+                      letterSpacing: '0.06em', fontWeight: 500,
+                    }}>{c}</span>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
