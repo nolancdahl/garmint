@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react'
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { COLORS, FONTS } from '../lib/theme'
 import { SHOPPING_CATEGORIES } from '../lib/constants'
 import { FieldLabel } from '../components/Primitives'
@@ -50,17 +50,22 @@ const WishlistTile = ({ item, onClick }) => (
       }}>
         {item.title}
       </div>
-      {item.tags && item.tags.length > 0 && (
-        <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
-          {item.tags.map((t) => (
-            <span key={t} style={{
-              fontFamily: FONTS.sub, fontSize: '8px', padding: '2px 6px',
-              background: 'rgba(244,238,224,0.25)', borderRadius: '999px',
-              letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
-            }}>{t}</span>
-          ))}
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+        {item.price && (
+          <span style={{
+            fontFamily: FONTS.sub, fontSize: '9px', padding: '2px 7px',
+            background: 'rgba(46,204,113,0.35)', borderRadius: '999px',
+            fontWeight: 700, letterSpacing: '0.02em',
+          }}>${item.price}</span>
+        )}
+        {item.tags && item.tags.map((t) => (
+          <span key={t} style={{
+            fontFamily: FONTS.sub, fontSize: '8px', padding: '2px 6px',
+            background: 'rgba(244,238,224,0.25)', borderRadius: '999px',
+            letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+          }}>{t}</span>
+        ))}
+      </div>
     </div>
   </div>
 )
@@ -217,6 +222,7 @@ const AddWishlistModal = ({ onClose, onSave }) => {
   const pasteRef = useRef(null)
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
+  const [price, setPrice] = useState('')
   const [image, setImage] = useState(null)
   const [selectedCategories, setSelectedCategories] = useState([])
   const [tags, setTags] = useState(loadTags)
@@ -281,6 +287,7 @@ const AddWishlistModal = ({ onClose, onSave }) => {
       url: url || null,
       title: title || url || 'Untitled',
       image,
+      price: price || null,
       publisher: null,
       description: '',
       category: selectedCategories[0],
@@ -414,6 +421,23 @@ const AddWishlistModal = ({ onClose, onSave }) => {
             </div>
           </div>
 
+          <FieldLabel>Price</FieldLabel>
+          <div style={{ position: 'relative', marginBottom: '14px' }}>
+            <input
+              value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+              placeholder="0.00"
+              inputMode="decimal"
+              style={{
+                width: '100%', padding: '12px 14px 12px 30px', borderRadius: '6px',
+                border: `1px solid ${COLORS.greenLine}`, background: COLORS.white,
+                fontFamily: FONTS.sub, fontSize: '13px', color: COLORS.text, outline: 'none',
+              }}
+            />
+            <div style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', color: COLORS.textFaint, fontFamily: FONTS.sub, fontSize: '14px', fontWeight: 600 }}>
+              $
+            </div>
+          </div>
+
           <FieldLabel required>Categories</FieldLabel>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
             {SHOPPING_CATEGORIES.map((c) => (
@@ -535,7 +559,177 @@ const GridSizeControl = ({ cols, onChange }) => {
   )
 }
 
-export const ShoppingPage = ({ items, pasteOpen, onPasteOpenChange, onSave, onSelectItem }) => {
+const DraggableWishlistGrid = ({ items, cols, onSelect, onReorder }) => {
+  const gridRef = useRef(null)
+  const dragState = useRef(null)
+  const [dragIdx, setDragIdx] = useState(null)
+  const [hoverIdx, setHoverIdx] = useState(null)
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 })
+  const longPressTimer = useRef(null)
+
+  const getCellSize = useCallback(() => {
+    if (!gridRef.current) return { w: 0, h: 0, left: 0, top: 0 }
+    const rect = gridRef.current.getBoundingClientRect()
+    const gap = 10
+    const w = (rect.width - gap * (cols - 1)) / cols
+    const h = w * (4 / 3) // aspect-ratio 3:4
+    return { w, h, cols, gap, left: rect.left, top: rect.top }
+  }, [cols])
+
+  const getIndexFromPos = useCallback((clientX, clientY) => {
+    const { w, h, gap, left, top } = getCellSize()
+    const scrollTop = gridRef.current?.parentElement?.scrollTop || 0
+    const col = Math.floor((clientX - left) / (w + gap))
+    const row = Math.floor((clientY - top + scrollTop) / (h + gap))
+    const idx = row * cols + Math.min(Math.max(col, 0), cols - 1)
+    return Math.min(Math.max(idx, 0), items.length - 1)
+  }, [items.length, cols, getCellSize])
+
+  const startDrag = useCallback((idx, clientX, clientY) => {
+    const { w, h, gap, left, top } = getCellSize()
+    const col = idx % cols
+    const row = Math.floor(idx / cols)
+    const cellX = left + col * (w + gap)
+    const cellY = top + row * (h + gap)
+    dragState.current = { offsetX: clientX - cellX, offsetY: clientY - cellY }
+    setDragIdx(idx)
+    setHoverIdx(idx)
+    setDragPos({ x: clientX - (clientX - cellX), y: clientY - (clientY - cellY) })
+  }, [cols, getCellSize])
+
+  const moveDrag = useCallback((clientX, clientY) => {
+    if (!dragState.current || dragIdx === null) return
+    const { offsetX, offsetY } = dragState.current
+    setDragPos({ x: clientX - offsetX, y: clientY - offsetY })
+    setHoverIdx(getIndexFromPos(clientX, clientY))
+  }, [dragIdx, getIndexFromPos])
+
+  const endDrag = useCallback(() => {
+    clearTimeout(longPressTimer.current)
+    if (dragIdx !== null && hoverIdx !== null && dragIdx !== hoverIdx) {
+      const newItems = [...items]
+      const [moved] = newItems.splice(dragIdx, 1)
+      newItems.splice(hoverIdx, 0, moved)
+      onReorder(newItems)
+    }
+    dragState.current = null
+    setDragIdx(null)
+    setHoverIdx(null)
+  }, [dragIdx, hoverIdx, items, onReorder])
+
+  const handleMouseDown = useCallback((e, idx) => {
+    e.preventDefault()
+    longPressTimer.current = setTimeout(() => startDrag(idx, e.clientX, e.clientY), 200)
+  }, [startDrag])
+
+  useEffect(() => {
+    if (dragIdx === null) return
+    const onMove = (e) => moveDrag(e.clientX, e.clientY)
+    const onUp = () => endDrag()
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [dragIdx, moveDrag, endDrag])
+
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    let touchIdx = null
+    const onTouchStart = (e) => {
+      const cell = e.target.closest('[data-idx]')
+      if (!cell) return
+      touchIdx = Number(cell.dataset.idx)
+      const touch = e.touches[0]
+      longPressTimer.current = setTimeout(() => startDrag(touchIdx, touch.clientX, touch.clientY), 300)
+    }
+    const onTouchMove = (e) => {
+      if (dragIdx !== null || dragState.current) {
+        e.preventDefault()
+        moveDrag(e.touches[0].clientX, e.touches[0].clientY)
+      } else {
+        clearTimeout(longPressTimer.current)
+      }
+    }
+    const onTouchEnd = () => {
+      clearTimeout(longPressTimer.current)
+      if (dragIdx !== null) { endDrag() }
+      else if (touchIdx !== null && items[touchIdx]) { onSelect(items[touchIdx]) }
+      touchIdx = null
+    }
+    grid.addEventListener('touchstart', onTouchStart, { passive: true })
+    grid.addEventListener('touchmove', onTouchMove, { passive: false })
+    grid.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => { grid.removeEventListener('touchstart', onTouchStart); grid.removeEventListener('touchmove', onTouchMove); grid.removeEventListener('touchend', onTouchEnd) }
+  }, [dragIdx, items, startDrag, moveDrag, endDrag, onSelect])
+
+  const getDisplayIndex = (originalIdx) => {
+    if (dragIdx === null || hoverIdx === null) return originalIdx
+    if (originalIdx === dragIdx) return hoverIdx
+    if (dragIdx < hoverIdx) {
+      if (originalIdx > dragIdx && originalIdx <= hoverIdx) return originalIdx - 1
+    } else {
+      if (originalIdx >= hoverIdx && originalIdx < dragIdx) return originalIdx + 1
+    }
+    return originalIdx
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div ref={gridRef} style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '10px' }}>
+        {items.map((item, idx) => {
+          const isDragging = dragIdx === idx
+          const cellW = gridRef.current ? (gridRef.current.offsetWidth - 10 * (cols - 1)) / cols : 0
+          const cellH = cellW * (4 / 3)
+          return (
+            <div
+              key={item.id}
+              data-idx={idx}
+              onMouseDown={(e) => handleMouseDown(e, idx)}
+              onMouseUp={() => { clearTimeout(longPressTimer.current); if (dragIdx === null) onSelect(item) }}
+              style={{
+                opacity: isDragging ? 0.3 : 1,
+                transform: dragIdx !== null && !isDragging
+                  ? (() => {
+                      const displayIdx = getDisplayIndex(idx)
+                      if (displayIdx === idx) return 'none'
+                      const fromCol = idx % cols
+                      const fromRow = Math.floor(idx / cols)
+                      const toCol = displayIdx % cols
+                      const toRow = Math.floor(displayIdx / cols)
+                      const dx = (toCol - fromCol) * (cellW + 10)
+                      const dy = (toRow - fromRow) * (cellH + 10)
+                      return `translate(${dx}px, ${dy}px)`
+                    })()
+                  : 'none',
+                transition: dragIdx !== null ? 'transform 0.2s ease, opacity 0.15s' : 'none',
+                WebkitUserSelect: 'none', userSelect: 'none',
+              }}
+            >
+              <WishlistTile item={item} onClick={() => {}} />
+            </div>
+          )
+        })}
+      </div>
+      {dragIdx !== null && items[dragIdx] && (() => {
+        const cellW = gridRef.current ? (gridRef.current.offsetWidth - 10 * (cols - 1)) / cols : 120
+        const cellH = cellW * (4 / 3)
+        return (
+          <div style={{
+            position: 'fixed', left: dragPos.x, top: dragPos.y,
+            width: cellW, height: cellH, zIndex: 9999, pointerEvents: 'none',
+            borderRadius: '8px', overflow: 'hidden',
+            boxShadow: '0 12px 32px rgba(19, 37, 27, 0.35)',
+            transform: 'scale(1.05)', opacity: 0.92,
+          }}>
+            <WishlistTile item={items[dragIdx]} onClick={() => {}} />
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+export const ShoppingPage = ({ items, pasteOpen, onPasteOpenChange, onSave, onSelectItem, onReorder }) => {
   const [catFilter, setCatFilter] = useState([])
   const [tagFilter, setTagFilter] = useState([])
   const [gridCols, setGridCols] = useState(() => {
@@ -610,9 +804,12 @@ export const ShoppingPage = ({ items, pasteOpen, onPasteOpenChange, onSave, onSe
           {items.length === 0 ? 'No items yet. Tap + to add something.' : 'No items match these filters.'}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: '10px' }}>
-          {filtered.map((it) => (<WishlistTile key={it.id} item={it} onClick={() => onSelectItem(it)} />))}
-        </div>
+        <DraggableWishlistGrid
+          items={filtered}
+          cols={gridCols}
+          onSelect={onSelectItem}
+          onReorder={onReorder}
+        />
       )}
 
       {pasteOpen && (

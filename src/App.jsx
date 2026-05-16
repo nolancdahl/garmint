@@ -169,6 +169,7 @@ function AppShell() {
             onPasteOpenChange={setShopPasteOpen}
             onSave={handleSaveWishlist}
             onSelectItem={setSelectedWishlistItem}
+            onReorder={(newItems) => setWishlistItems(newItems)}
           />
         )
       case 'inspiration':
