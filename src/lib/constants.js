@@ -13,3 +13,4 @@ export const SHOPPING_CATEGORIES = ['Athleisure', 'Casual', 'Gym', 'Lounge', 'So
 
 export const CLOSET_KEY = 'garmint_closet_v1'
 export const WISHLIST_KEY = 'garmint_wishlist_v1'
+export const INSPO_KEY = 'garmint_inspo_v1'

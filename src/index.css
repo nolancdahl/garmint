@@ -54,6 +54,13 @@ input, textarea, select { font-family: inherit; }
 .popup-exit { animation: popOut 0.20s cubic-bezier(0.4, 0, 1, 1) both; transform-origin: bottom right; }
 .dropdown-enter { animation: dropdownIn 0.20s cubic-bezier(0.2, 0.8, 0.3, 1) both; transform-origin: top right; }
 .modal-enter { animation: modalIn 0.26s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes modalOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(36px) scale(0.96); }
+}
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+.modal-exit { animation: modalOut 0.24s ease both; }
 .backdrop-enter { animation: fadeIn 0.18s ease both; }
+.backdrop-exit { animation: fadeOut 0.22s ease both; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { scrollbar-width: none; }

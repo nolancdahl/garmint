@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { CLOSET_KEY, WISHLIST_KEY } from './lib/constants'
+import { CLOSET_KEY, WISHLIST_KEY, INSPO_KEY } from './lib/constants'
 import { loadJson, saveJson } from './lib/storage'
 import { Header } from './components/Header'
 import { BottomNav } from './components/BottomNav'
@@ -13,7 +13,8 @@ import {
 import { HomePage } from './pages/HomePage'
 import { ClosetPage } from './pages/ClosetPage'
 import { ShoppingPage } from './pages/ShoppingPage'
-import { CalendarPage, StatsPage, InspirationPage, ExpertPage, ProfilePage } from './pages/OtherPages'
+import { CalendarPage, StatsPage, ExpertPage, ProfilePage } from './pages/OtherPages'
+import { InspirationPage } from './pages/InspirationPage'
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home')
@@ -25,9 +26,11 @@ export default function App() {
   const [shopPasteOpen, setShopPasteOpen] = useState(false)
   const [selectedClosetItem, setSelectedClosetItem] = useState(null)
   const [selectedWishlistItem, setSelectedWishlistItem] = useState(null)
+  const [inspoItems, setInspoItems] = useState(() => loadJson(INSPO_KEY))
 
   useEffect(() => { saveJson(CLOSET_KEY, closetItems) }, [closetItems])
   useEffect(() => { saveJson(WISHLIST_KEY, wishlistItems) }, [wishlistItems])
+  useEffect(() => { saveJson(INSPO_KEY, inspoItems) }, [inspoItems])
 
   useEffect(() => {
     if (chatOpen) setChatMounted(true)
@@ -98,7 +101,14 @@ export default function App() {
           />
         )
       case 'inspiration':
-        return <InspirationPage />
+        return (
+          <InspirationPage
+            items={inspoItems}
+            onSave={(item) => setInspoItems((prev) => [item, ...prev])}
+            onDelete={(id) => setInspoItems((prev) => prev.filter((i) => i.id !== id))}
+            onUpdate={(updated) => setInspoItems((prev) => prev.map((i) => i.id === updated.id ? updated : i))}
+          />
+        )
       case 'expert':
         return <ExpertPage />
       case 'profile':

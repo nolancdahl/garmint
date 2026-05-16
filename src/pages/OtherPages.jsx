@@ -76,30 +76,6 @@ export const StatsPage = ({ items, wishlist }) => (
   </div>
 )
 
-export const InspirationPage = () => (
-  <div>
-    <PageTitle title="Inspiration" subtitle="What you're chasing" />
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-      {Array.from({ length: 12 }).map((_, i) => (
-        <div
-          key={i}
-          className="tile"
-          style={{
-            aspectRatio: '1',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: COLORS.textFaint,
-            cursor: 'pointer',
-            borderRadius: '6px',
-          }}
-        >
-          <PlusIcon size={18} strokeWidth={1.4} />
-        </div>
-      ))}
-    </div>
-  </div>
-)
 
 const SuggestionChip = ({ children }) => (
   <button
