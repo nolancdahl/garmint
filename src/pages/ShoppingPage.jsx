@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { COLORS, FONTS } from '../lib/theme'
 import { SHOPPING_CATEGORIES } from '../lib/constants'
 import { FieldLabel } from '../components/Primitives'
-import { LinkIcon, PlusIcon, XIcon, ClipboardIcon, ChevronDown, GridIcon, TagIcon, TypeIcon } from '../components/Icons'
+import { LinkIcon, PlusIcon, XIcon, ClipboardIcon, ChevronDown, ChevronLeft, ChevronRight, GridIcon, TagIcon, TypeIcon } from '../components/Icons'
 import { fileToResizedDataUrl, loadJson, saveJson } from '../lib/storage'
 import { createPortal } from 'react-dom'
 import { CropOverlay } from '../components/CropOverlay'
@@ -22,7 +22,31 @@ const loadColors = () => {
   return saved.length > 0 ? saved : DEFAULT_COLORS
 }
 
+// Get all images for an item (handles both legacy `image` and new `images` array)
+const getImages = (item) => {
+  if (item.images && item.images.length > 0) return item.images
+  if (item.image) return [item.image]
+  return []
+}
+
 const WishlistTile = ({ item, onClick, cols = 3, onUpdate }) => {
+  const images = getImages(item)
+  const displayIdx = item.displayImageIndex || 0
+  const currentImg = images[displayIdx] || images[0]
+  const hasMultiple = images.length > 1
+  const [hovered, setHovered] = useState(false)
+
+  const goLeft = (e) => {
+    e.stopPropagation()
+    const newIdx = (displayIdx - 1 + images.length) % images.length
+    onUpdate && onUpdate({ ...item, displayImageIndex: newIdx })
+  }
+  const goRight = (e) => {
+    e.stopPropagation()
+    const newIdx = (displayIdx + 1) % images.length
+    onUpdate && onUpdate({ ...item, displayImageIndex: newIdx })
+  }
+
   const overlay = (
     <div style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -64,24 +88,59 @@ const WishlistTile = ({ item, onClick, cols = 3, onUpdate }) => {
     </div>
   )
 
+  const arrowBtn = {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+    width: '24px', height: '24px', borderRadius: '50%',
+    background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', zIndex: 3, padding: 0,
+    transition: 'opacity 0.15s',
+  }
+
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className="tile"
       style={{
         aspectRatio: '3/4', overflow: 'hidden', cursor: 'pointer',
         padding: 0, display: 'flex', flexDirection: 'column', position: 'relative',
       }}
     >
-      {item.image ? (
+      {currentImg ? (
         <CropOverlay
-          src={item.image}
+          src={currentImg}
           cropX={item.cropX}
           cropY={item.cropY}
           cropZoom={item.cropZoom}
           onSave={(cx, cy, cz) => onUpdate && onUpdate({ ...item, cropX: cx, cropY: cy, cropZoom: cz })}
         >
           {overlay}
+          {/* Multi-image arrows on hover */}
+          {hasMultiple && hovered && (
+            <>
+              <button onClick={goLeft} style={{ ...arrowBtn, left: '6px' }}>
+                <ChevronLeft size={14} strokeWidth={2.5} />
+              </button>
+              <button onClick={goRight} style={{ ...arrowBtn, right: '6px' }}>
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+              {/* Dot indicators */}
+              <div style={{
+                position: 'absolute', top: '6px', left: '50%', transform: 'translateX(-50%)',
+                display: 'flex', gap: '4px', zIndex: 3,
+              }}>
+                {images.map((_, i) => (
+                  <div key={i} style={{
+                    width: '5px', height: '5px', borderRadius: '50%',
+                    background: i === displayIdx ? '#fff' : 'rgba(255,255,255,0.4)',
+                    transition: 'background 0.15s',
+                  }} />
+                ))}
+              </div>
+            </>
+          )}
         </CropOverlay>
       ) : (
         <>
@@ -252,7 +311,8 @@ const AddWishlistModal = ({ onClose, onSave }) => {
   const [brand, setBrand] = useState('')
   const [title, setTitle] = useState('')
   const [price, setPrice] = useState('')
-  const [image, setImage] = useState(null)
+  const [images, setImages] = useState([])
+  const [previewIdx, setPreviewIdx] = useState(0)
   const [selectedCategories, setSelectedCategories] = useState([])
   const [tags, setTags] = useState(() => [...loadTags()].sort((a, b) => a.localeCompare(b)))
   const [selectedTags, setSelectedTags] = useState([])
@@ -305,7 +365,11 @@ const AddWishlistModal = ({ onClose, onSave }) => {
   const handleFile = async (file) => {
     if (!file.type.startsWith('image/')) return
     const dataUrl = await fileToResizedDataUrl(file, 800, 0.85)
-    setImage(dataUrl)
+    setImages((prev) => { const next = [...prev, dataUrl]; setPreviewIdx(next.length - 1); return next })
+  }
+
+  const handleFiles = async (files) => {
+    for (const file of files) await handleFile(file)
   }
 
   const handlePasteEvent = async (e) => {
@@ -316,10 +380,9 @@ const AddWishlistModal = ({ onClose, onSave }) => {
         e.preventDefault()
         const file = item.getAsFile()
         if (file) await handleFile(file)
-        setPasteZoneOpen(false)
-        return
       }
     }
+    setPasteZoneOpen(false)
   }
 
   const openPasteZone = () => {
@@ -327,7 +390,7 @@ const AddWishlistModal = ({ onClose, onSave }) => {
     setTimeout(() => { if (pasteRef.current) pasteRef.current.focus() }, 100)
   }
 
-  const canSave = !!(title || url || brand || image)
+  const canSave = !!(title || url || brand || images.length > 0)
 
   const handleSave = () => {
     if (!canSave) return
@@ -336,7 +399,9 @@ const AddWishlistModal = ({ onClose, onSave }) => {
       url: url || null,
       title: title || brand || url || 'Untitled',
       brand: brand || null,
-      image,
+      image: images[0] || null,
+      images: images.length > 0 ? images : null,
+      displayImageIndex: 0,
       price: price || null,
       publisher: null,
       description: '',
@@ -380,56 +445,88 @@ const AddWishlistModal = ({ onClose, onSave }) => {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-          <FieldLabel>Photo</FieldLabel>
-          {image ? (
-            <div style={{ position: 'relative', marginBottom: '14px' }}>
-              <img src={image} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', display: 'block' }} />
-              <button onClick={() => setImage(null)} style={{
+          <FieldLabel>Photos</FieldLabel>
+          {images.length > 0 && (
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
+              <img src={images[previewIdx]} alt="" style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px', display: 'block', background: COLORS.creamDeep }} />
+              <button onClick={() => {
+                setImages((prev) => { const next = prev.filter((_, i) => i !== previewIdx); setPreviewIdx(Math.min(previewIdx, next.length - 1)); return next })
+              }} style={{
                 position: 'absolute', top: '8px', right: '8px',
                 width: '28px', height: '28px', borderRadius: '50%',
                 background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
               }}><XIcon size={14} /></button>
+              {images.length > 1 && (
+                <>
+                  <button onClick={() => setPreviewIdx((previewIdx - 1 + images.length) % images.length)} style={{
+                    position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}><ChevronLeft size={14} strokeWidth={2.5} /></button>
+                  <button onClick={() => setPreviewIdx((previewIdx + 1) % images.length)} style={{
+                    position: 'absolute', right: '40px', top: '50%', transform: 'translateY(-50%)',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}><ChevronRight size={14} strokeWidth={2.5} /></button>
+                  <div style={{
+                    position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)',
+                    display: 'flex', gap: '4px',
+                  }}>
+                    {images.map((_, i) => (
+                      <div key={i} style={{
+                        width: '6px', height: '6px', borderRadius: '50%',
+                        background: i === previewIdx ? '#fff' : 'rgba(255,255,255,0.4)',
+                      }} />
+                    ))}
+                  </div>
+                </>
+              )}
+              <div style={{
+                fontFamily: FONTS.sub, fontSize: '10px', color: COLORS.textFaint,
+                textAlign: 'center', marginTop: '4px',
+              }}>{previewIdx + 1} / {images.length}</div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-              <button onClick={() => fileRef.current?.click()} style={{
-                flex: 1, padding: '18px 12px', background: COLORS.creamDeep,
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+            <button onClick={() => fileRef.current?.click()} style={{
+              flex: 1, padding: images.length > 0 ? '10px 12px' : '18px 12px', background: COLORS.creamDeep,
+              border: `1px dashed ${COLORS.greenLine}`, borderRadius: '8px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+              cursor: 'pointer', color: COLORS.textMuted,
+            }}>
+              <PlusIcon size={images.length > 0 ? 16 : 20} strokeWidth={1.5} />
+              <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Upload</span>
+            </button>
+            {!pasteZoneOpen ? (
+              <button onClick={openPasteZone} style={{
+                flex: 1, padding: images.length > 0 ? '10px 12px' : '18px 12px', background: COLORS.creamDeep,
                 border: `1px dashed ${COLORS.greenLine}`, borderRadius: '8px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
                 cursor: 'pointer', color: COLORS.textMuted,
               }}>
-                <PlusIcon size={20} strokeWidth={1.5} />
-                <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Upload</span>
+                <ClipboardIcon size={images.length > 0 ? 14 : 18} strokeWidth={1.5} />
+                <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Paste</span>
               </button>
-              {!pasteZoneOpen ? (
-                <button onClick={openPasteZone} style={{
-                  flex: 1, padding: '18px 12px', background: COLORS.creamDeep,
-                  border: `1px dashed ${COLORS.greenLine}`, borderRadius: '8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-                  cursor: 'pointer', color: COLORS.textMuted,
-                }}>
-                  <ClipboardIcon size={18} strokeWidth={1.5} />
-                  <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Paste</span>
-                </button>
-              ) : (
-                <div
-                  ref={pasteRef} contentEditable onPaste={handlePasteEvent}
-                  style={{
-                    flex: 1, padding: '10px', background: COLORS.white,
-                    border: `1.5px dashed ${COLORS.greenLine}`, borderRadius: '8px',
-                    fontFamily: FONTS.sub, fontSize: '11px', color: COLORS.textFaint,
-                    outline: 'none', WebkitUserSelect: 'text', userSelect: 'text',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    textAlign: 'center', minHeight: 0,
-                  }}
-                />
-              )}
-            </div>
-          )}
+            ) : (
+              <div
+                ref={pasteRef} contentEditable onPaste={handlePasteEvent}
+                style={{
+                  flex: 1, padding: '10px', background: COLORS.white,
+                  border: `1.5px dashed ${COLORS.greenLine}`, borderRadius: '8px',
+                  fontFamily: FONTS.sub, fontSize: '11px', color: COLORS.textFaint,
+                  outline: 'none', WebkitUserSelect: 'text', userSelect: 'text',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  textAlign: 'center', minHeight: 0,
+                }}
+              />
+            )}
+          </div>
 
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={(e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = '' }}
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+            onChange={(e) => { if (e.target.files.length) handleFiles([...e.target.files]); e.target.value = '' }}
           />
 
           <FieldLabel>Brand</FieldLabel>

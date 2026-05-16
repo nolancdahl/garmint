@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { COLORS, FONTS } from '../lib/theme'
 import { SHOPPING_CATEGORIES } from '../lib/constants'
-import { TrashIcon, ArrowRightIcon, EditIcon, XIcon, PlusIcon, ClipboardIcon, LinkIcon, TagIcon, TypeIcon } from './Icons'
+import { TrashIcon, ArrowRightIcon, EditIcon, XIcon, PlusIcon, ClipboardIcon, LinkIcon, TagIcon, TypeIcon, ChevronLeft, ChevronRight } from './Icons'
 import { FieldLabel } from './Primitives'
 import { fileToResizedDataUrl, loadJson, saveJson } from '../lib/storage'
 
@@ -91,7 +91,9 @@ const EditWishlistModal = ({ item, onClose, onSave }) => {
   const [brand, setBrand] = useState(item.brand || '')
   const [title, setTitle] = useState(item.title || '')
   const [price, setPrice] = useState(item.price || '')
-  const [image, setImage] = useState(item.image || null)
+  const initImages = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : [])
+  const [images, setImages] = useState(initImages)
+  const [previewIdx, setPreviewIdx] = useState(0)
   const [selectedCategories, setSelectedCategories] = useState(item.categories || (item.category ? [item.category] : []))
   const [tags, setTags] = useState(() => [...loadTags()].sort((a, b) => a.localeCompare(b)))
   const [selectedTags, setSelectedTags] = useState(item.tags || [])
@@ -126,7 +128,11 @@ const EditWishlistModal = ({ item, onClose, onSave }) => {
   const handleFile = async (file) => {
     if (!file.type.startsWith('image/')) return
     const dataUrl = await fileToResizedDataUrl(file, 800, 0.85)
-    setImage(dataUrl)
+    setImages((prev) => { const next = [...prev, dataUrl]; setPreviewIdx(next.length - 1); return next })
+  }
+
+  const handleFiles = async (files) => {
+    for (const file of files) await handleFile(file)
   }
 
   const handlePasteEvent = async (e) => {
@@ -137,13 +143,12 @@ const EditWishlistModal = ({ item, onClose, onSave }) => {
         e.preventDefault()
         const file = it.getAsFile()
         if (file) await handleFile(file)
-        setPasteZoneOpen(false)
-        return
       }
     }
+    setPasteZoneOpen(false)
   }
 
-  const canSave = !!(title || url || brand || image)
+  const canSave = !!(title || url || brand || images.length > 0)
 
   const handleSave = () => {
     if (!canSave) return
@@ -152,7 +157,8 @@ const EditWishlistModal = ({ item, onClose, onSave }) => {
       url: url || null,
       title: title || brand || url || 'Untitled',
       brand: brand || null,
-      image,
+      image: images[0] || null,
+      images: images.length > 0 ? images : null,
       price: price || null,
       category: selectedCategories[0] || null,
       categories: selectedCategories,
@@ -192,56 +198,88 @@ const EditWishlistModal = ({ item, onClose, onSave }) => {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-          <FieldLabel>Photo</FieldLabel>
-          {image ? (
-            <div style={{ position: 'relative', marginBottom: '14px' }}>
-              <img src={image} alt="" style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '8px', display: 'block' }} />
-              <button onClick={() => setImage(null)} style={{
+          <FieldLabel>Photos</FieldLabel>
+          {images.length > 0 && (
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
+              <img src={images[previewIdx]} alt="" style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px', display: 'block', background: COLORS.creamDeep }} />
+              <button onClick={() => {
+                setImages((prev) => { const next = prev.filter((_, i) => i !== previewIdx); setPreviewIdx(Math.min(previewIdx, next.length - 1)); return next })
+              }} style={{
                 position: 'absolute', top: '8px', right: '8px',
                 width: '28px', height: '28px', borderRadius: '50%',
                 background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
               }}><XIcon size={14} /></button>
+              {images.length > 1 && (
+                <>
+                  <button onClick={() => setPreviewIdx((previewIdx - 1 + images.length) % images.length)} style={{
+                    position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}><ChevronLeft size={14} strokeWidth={2.5} /></button>
+                  <button onClick={() => setPreviewIdx((previewIdx + 1) % images.length)} style={{
+                    position: 'absolute', right: '40px', top: '50%', transform: 'translateY(-50%)',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}><ChevronRight size={14} strokeWidth={2.5} /></button>
+                  <div style={{
+                    position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)',
+                    display: 'flex', gap: '4px',
+                  }}>
+                    {images.map((_, i) => (
+                      <div key={i} style={{
+                        width: '6px', height: '6px', borderRadius: '50%',
+                        background: i === previewIdx ? '#fff' : 'rgba(255,255,255,0.4)',
+                      }} />
+                    ))}
+                  </div>
+                </>
+              )}
+              <div style={{
+                fontFamily: FONTS.sub, fontSize: '10px', color: COLORS.textFaint,
+                textAlign: 'center', marginTop: '4px',
+              }}>{previewIdx + 1} / {images.length}</div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-              <button onClick={() => fileRef.current?.click()} style={{
-                flex: 1, padding: '18px 12px', background: COLORS.creamDeep,
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+            <button onClick={() => fileRef.current?.click()} style={{
+              flex: 1, padding: images.length > 0 ? '10px 12px' : '18px 12px', background: COLORS.creamDeep,
+              border: `1px dashed ${COLORS.greenLine}`, borderRadius: '8px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+              cursor: 'pointer', color: COLORS.textMuted,
+            }}>
+              <PlusIcon size={images.length > 0 ? 16 : 20} strokeWidth={1.5} />
+              <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Upload</span>
+            </button>
+            {!pasteZoneOpen ? (
+              <button onClick={() => { setPasteZoneOpen(true); setTimeout(() => pasteRef.current?.focus(), 100) }} style={{
+                flex: 1, padding: images.length > 0 ? '10px 12px' : '18px 12px', background: COLORS.creamDeep,
                 border: `1px dashed ${COLORS.greenLine}`, borderRadius: '8px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
                 cursor: 'pointer', color: COLORS.textMuted,
               }}>
-                <PlusIcon size={20} strokeWidth={1.5} />
-                <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Upload</span>
+                <ClipboardIcon size={images.length > 0 ? 14 : 18} strokeWidth={1.5} />
+                <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Paste</span>
               </button>
-              {!pasteZoneOpen ? (
-                <button onClick={() => { setPasteZoneOpen(true); setTimeout(() => pasteRef.current?.focus(), 100) }} style={{
-                  flex: 1, padding: '18px 12px', background: COLORS.creamDeep,
-                  border: `1px dashed ${COLORS.greenLine}`, borderRadius: '8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-                  cursor: 'pointer', color: COLORS.textMuted,
-                }}>
-                  <ClipboardIcon size={18} strokeWidth={1.5} />
-                  <span style={{ fontFamily: FONTS.sub, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600 }}>Paste</span>
-                </button>
-              ) : (
-                <div
-                  ref={pasteRef} contentEditable onPaste={handlePasteEvent}
-                  style={{
-                    flex: 1, padding: '10px', background: COLORS.white,
-                    border: `1.5px dashed ${COLORS.greenLine}`, borderRadius: '8px',
-                    fontFamily: FONTS.sub, fontSize: '11px', color: COLORS.textFaint,
-                    outline: 'none', WebkitUserSelect: 'text', userSelect: 'text',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    textAlign: 'center', minHeight: 0,
-                  }}
-                />
-              )}
-            </div>
-          )}
+            ) : (
+              <div
+                ref={pasteRef} contentEditable onPaste={handlePasteEvent}
+                style={{
+                  flex: 1, padding: '10px', background: COLORS.white,
+                  border: `1.5px dashed ${COLORS.greenLine}`, borderRadius: '8px',
+                  fontFamily: FONTS.sub, fontSize: '11px', color: COLORS.textFaint,
+                  outline: 'none', WebkitUserSelect: 'text', userSelect: 'text',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  textAlign: 'center', minHeight: 0,
+                }}
+              />
+            )}
+          </div>
 
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={(e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = '' }}
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+            onChange={(e) => { if (e.target.files.length) handleFiles([...e.target.files]); e.target.value = '' }}
           />
 
           <FieldLabel>Brand</FieldLabel>
@@ -396,10 +434,18 @@ const EditWishlistModal = ({ item, onClose, onSave }) => {
   )
 }
 
+const getImages = (item) => {
+  if (item.images && item.images.length > 0) return item.images
+  if (item.image) return [item.image]
+  return []
+}
+
 export const WishlistItemDetail = ({ item, onClose, onDelete, onUpdate }) => {
   const [confirming, setConfirming] = useState(false)
   const [closing, setClosing] = useState(false)
   const [editing, setEditing] = useState(false)
+  const detailImages = getImages(item)
+  const [detailImgIdx, setDetailImgIdx] = useState(item.displayImageIndex || 0)
 
   const startClose = () => {
     if (closing) return
@@ -434,16 +480,43 @@ export const WishlistItemDetail = ({ item, onClose, onDelete, onUpdate }) => {
         }}
       >
         {/* Full image — no border/padding */}
-        {item.image ? (
-          <div style={{ width: '100%', flexShrink: 0 }}>
+        {detailImages.length > 0 ? (
+          <div style={{ width: '100%', flexShrink: 0, position: 'relative' }}>
             <img
-              src={item.image}
+              src={detailImages[detailImgIdx] || detailImages[0]}
               alt={item.title}
               style={{
                 width: '100%', maxHeight: '50vh', objectFit: 'cover',
                 display: 'block',
               }}
             />
+            {detailImages.length > 1 && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); setDetailImgIdx((detailImgIdx - 1 + detailImages.length) % detailImages.length) }} style={{
+                  position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
+                  width: '28px', height: '28px', borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }}><ChevronLeft size={14} strokeWidth={2.5} /></button>
+                <button onClick={(e) => { e.stopPropagation(); setDetailImgIdx((detailImgIdx + 1) % detailImages.length) }} style={{
+                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                  width: '28px', height: '28px', borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }}><ChevronRight size={14} strokeWidth={2.5} /></button>
+                <div style={{
+                  position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)',
+                  display: 'flex', gap: '5px',
+                }}>
+                  {detailImages.map((_, i) => (
+                    <div key={i} style={{
+                      width: '6px', height: '6px', borderRadius: '50%',
+                      background: i === detailImgIdx ? '#fff' : 'rgba(255,255,255,0.4)',
+                    }} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div style={{
