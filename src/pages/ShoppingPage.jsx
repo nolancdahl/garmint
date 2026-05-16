@@ -574,6 +574,7 @@ const GridSizeControl = ({ cols, onChange }) => {
 const DraggableWishlistGrid = ({ items, cols, onSelect, onReorder }) => {
   const gridRef = useRef(null)
   const dragState = useRef(null)
+  const dragging = useRef(false)
   const [dragIdx, setDragIdx] = useState(null)
   const [hoverIdx, setHoverIdx] = useState(null)
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 })
@@ -604,9 +605,10 @@ const DraggableWishlistGrid = ({ items, cols, onSelect, onReorder }) => {
     const cellX = left + col * (w + gap)
     const cellY = top + row * (h + gap)
     dragState.current = { offsetX: clientX - cellX, offsetY: clientY - cellY }
+    dragging.current = true
     setDragIdx(idx)
     setHoverIdx(idx)
-    setDragPos({ x: clientX - (clientX - cellX), y: clientY - (clientY - cellY) })
+    setDragPos({ x: cellX, y: cellY })
   }, [cols, getCellSize])
 
   const moveDrag = useCallback((clientX, clientY) => {
@@ -625,6 +627,7 @@ const DraggableWishlistGrid = ({ items, cols, onSelect, onReorder }) => {
       onReorder(newItems)
     }
     dragState.current = null
+    setTimeout(() => { dragging.current = false }, 50)
     setDragIdx(null)
     setHoverIdx(null)
   }, [dragIdx, hoverIdx, items, onReorder])
@@ -635,9 +638,16 @@ const DraggableWishlistGrid = ({ items, cols, onSelect, onReorder }) => {
   }, [startDrag])
 
   useEffect(() => {
-    if (dragIdx === null) return
-    const onMove = (e) => moveDrag(e.clientX, e.clientY)
-    const onUp = () => endDrag()
+    const onMove = (e) => {
+      if (dragIdx !== null) {
+        moveDrag(e.clientX, e.clientY)
+      } else if (longPressTimer.current) {
+        // Cancel long press if mouse moves before drag starts
+        clearTimeout(longPressTimer.current)
+        longPressTimer.current = null
+      }
+    }
+    const onUp = () => { if (dragIdx !== null) endDrag() }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
@@ -697,7 +707,7 @@ const DraggableWishlistGrid = ({ items, cols, onSelect, onReorder }) => {
               key={item.id}
               data-idx={idx}
               onMouseDown={(e) => handleMouseDown(e, idx)}
-              onMouseUp={() => { clearTimeout(longPressTimer.current); if (dragIdx === null) onSelect(item) }}
+              onMouseUp={() => { clearTimeout(longPressTimer.current); if (!dragging.current) onSelect(item) }}
               style={{
                 opacity: isDragging ? 0.3 : 1,
                 transform: dragIdx !== null && !isDragging
@@ -774,14 +784,14 @@ export const ShoppingPage = ({ items, pasteOpen, onPasteOpenChange, onSave, onSe
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
           <h2 className="title-bold" style={{ fontSize: '34px', margin: 0, color: COLORS.text, lineHeight: 1.0 }}>
-            Wishlist
+            List
           </h2>
           <p style={{
             fontFamily: FONTS.sub, fontSize: '11px', color: COLORS.textMuted,
             margin: '8px 0 0', textTransform: 'uppercase',
             letterSpacing: '0.22em', fontWeight: 500,
           }}>
-            What you're considering
+            What you're eyeing
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>

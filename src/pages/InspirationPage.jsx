@@ -356,7 +356,7 @@ export const InspirationPage = ({ items, onSave, onDelete, onUpdate, onReorder }
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
           <h2 className="title-bold" style={{ fontSize: '34px', margin: 0, color: COLORS.text, lineHeight: 1.0 }}>
-            Inspiration
+            Lookbook
           </h2>
           <p style={{
             fontFamily: FONTS.sub,
@@ -367,7 +367,7 @@ export const InspirationPage = ({ items, onSave, onDelete, onUpdate, onReorder }
             letterSpacing: '0.22em',
             fontWeight: 500,
           }}>
-            What you're chasing
+            Fits that speak to you
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '4px', position: 'relative' }}>
