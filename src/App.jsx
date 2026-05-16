@@ -19,6 +19,68 @@ import { CalendarPage, StatsPage, ExpertPage, ProfilePage } from './pages/OtherP
 import { InspirationPage } from './pages/InspirationPage'
 import { COLORS, FONTS } from './lib/theme'
 
+const UpdateBanner = () => {
+  const [update, setUpdate] = useState(null)
+
+  useEffect(() => {
+    // Listen for service worker updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing
+          if (!newWorker) return
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              setUpdate(new Date())
+            }
+          })
+        })
+      })
+      // Also check on page load if there was a recent update
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        setUpdate(new Date())
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!update) return
+    const t = setTimeout(() => setUpdate(null), 10000)
+    return () => clearTimeout(t)
+  }, [update])
+
+  if (!update) return null
+
+  const timeStr = update.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+  return (
+    <div
+      onClick={() => setUpdate(null)}
+      style={{
+        position: 'fixed',
+        top: '14px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 10000,
+        padding: '8px 18px',
+        borderRadius: '999px',
+        background: COLORS.cream,
+        color: COLORS.green,
+        fontFamily: FONTS.sub,
+        fontSize: '11px',
+        fontWeight: 600,
+        letterSpacing: '0.06em',
+        boxShadow: '0 4px 16px rgba(19, 37, 27, 0.2)',
+        cursor: 'pointer',
+        animation: 'fadeUp 0.3s ease both',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      Latest update pushed · {timeStr}
+    </div>
+  )
+}
+
 function AppShell() {
   const user = useAuth()
   const [currentPage, setCurrentPage] = useState('home')
@@ -193,6 +255,7 @@ function AppShell() {
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '78px' }}>
+      <UpdateBanner />
       <Header
         onProfileClick={() => { setCurrentPage('profile'); closeAll() }}
         onLogoClick={() => { setCurrentPage('home'); closeAll() }}
