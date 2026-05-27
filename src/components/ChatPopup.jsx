@@ -68,10 +68,10 @@ export const ChatPopup = ({ isOpen, onClose }) => {
     if (!trimmed) return
     setMessages((prev) => [...prev, { role: 'user', text: trimmed }])
     setInput('')
-    // Simulate Lorenzo response
+    // Simulate Jeeves response
     setTimeout(() => {
       setMessages((prev) => [...prev, {
-        role: 'lorenzo',
+        role: 'jeeves',
         text: "I'm still getting set up, but I'll be able to help with that soon. Stay tuned!",
       }])
     }, 600)
@@ -116,7 +116,7 @@ export const ChatPopup = ({ isOpen, onClose }) => {
           background: COLORS.green, color: COLORS.cream,
           borderRadius: '16px 16px 0 0',
         }}>
-          <div className="title-bold" style={{ fontSize: '20px', color: COLORS.cream }}>Ask Lorenzo</div>
+          <div className="title-bold" style={{ fontSize: '20px', color: COLORS.cream }}>Ask Jeeves</div>
           <div style={{
             fontFamily: FONTS.sub, fontSize: '9.5px',
             color: 'rgba(244, 238, 224, 0.7)',

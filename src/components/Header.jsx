@@ -1,14 +1,9 @@
 import React from 'react'
 import { COLORS } from '../lib/theme'
-import { MyntLogo } from './MyntLogo'
 
 export const Header = ({ onLogoClick }) => (
   <header style={{ background: COLORS.green, padding: '12px 18px 14px', position: 'relative', paddingBottom: '58px' }}>
-    <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-      <div onClick={onLogoClick} style={{ cursor: 'pointer', userSelect: 'none', marginLeft: '44px' }}>
-        <MyntLogo color={COLORS.cream} height={26} />
-      </div>
-    </div>
+    <div style={{ height: '26px' }} />
     {/* Smooth arch using SVG ellipse */}
     <div style={{
       position: 'absolute',

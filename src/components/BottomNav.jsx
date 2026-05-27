@@ -12,7 +12,7 @@ export const BottomNav = ({ pages, current, onChange }) => (
       borderTop: `1px solid ${COLORS.greenLine}`,
       padding: '12px 4px 14px',
       paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))',
-      zIndex: 40,
+      zIndex: 100,
       backdropFilter: 'blur(8px)',
     }}
   >

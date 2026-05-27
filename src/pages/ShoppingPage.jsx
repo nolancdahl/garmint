@@ -10,6 +10,7 @@ import { useAuth } from '../components/AuthGate'
 import { createPortal } from 'react-dom'
 import { CropOverlay } from '../components/CropOverlay'
 import { STYLE_OPTION_ICONS, CATEGORY_OPTION_ICONS, COLOR_SWATCHES } from './ClosetPage'
+import { useScrollGuard } from '../lib/useScrollGuard'
 
 // Same visual-per-option logic as Closet's FilterDropdown.
 const optionVisual = (kind, opt) => {
@@ -78,6 +79,7 @@ const WishlistTile = ({ item, onClick, cols = 3, onUpdate }) => {
   const currentImg = images[displayIdx] || images[0]
   const hasMultiple = images.length > 1
   const [hovered, setHovered] = useState(false)
+  const guard = useScrollGuard(onClick)
 
   const goLeft = (e) => {
     e.stopPropagation()
@@ -142,7 +144,8 @@ const WishlistTile = ({ item, onClick, cols = 3, onUpdate }) => {
 
   return (
     <div
-      onClick={onClick}
+      onPointerDown={guard.onPointerDown}
+      onClick={guard.onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className="tile"

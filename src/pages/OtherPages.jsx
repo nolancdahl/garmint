@@ -9,7 +9,7 @@ import { SHOPPING_CATEGORIES, CLOSET_KEY, WISHLIST_KEY } from '../lib/constants'
 import { db, auth } from '../lib/firebase'
 import { buildCrossAppBlock } from '../lib/crossAppContext'
 
-// Snapshot of the user's saved profile data to send with each Lorenzo chat request.
+// Snapshot of the user's saved profile data to send with each Jeeves chat request.
 // The Netlify function embeds this in the system prompt so Claude can ground answers in
 // the user's actual measurements, brand fits, color palette, etc.
 const gatherUserContext = () => {
@@ -463,7 +463,7 @@ export const ExpertPage = ({ prefill, onPrefillConsumed }) => {
     return () => { cancelled = true }
   }, [activePanel])
 
-  // Honor an inbound prefill (e.g., from Profile → "Chat with Lorenzo"): pop open the Ask panel
+  // Honor an inbound prefill (e.g., from Profile → "Chat with Jeeves"): pop open the Ask panel
   // and seed the input. User still presses Send to submit it.
   useEffect(() => {
     if (prefill) {
@@ -491,23 +491,27 @@ export const ExpertPage = ({ prefill, onPrefillConsumed }) => {
     setSending(true)
 
     try {
-      const res = await fetch('/.netlify/functions/lorenzo-chat', {
+      // Unified Jeeves: every app POSTs to homebase's central jeeves-chat function with
+      // its appKey so Jeeves leads with the right domain (fashion for mint here) while
+      // still having full cross-app context.
+      const res = await fetch('https://nolan-jeeves.netlify.app/.netlify/functions/jeeves-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextHistory.map((m) => ({ role: m.role, text: m.text })),
           userContext: { ...gatherUserContext(), crossApp },
+          appKey: 'clothes',
         }),
       })
       let data = {}
       try { data = await res.json() } catch { /* non-JSON body */ }
       if (!res.ok || !data.text) {
-        throw new Error(data.error || `Lorenzo unreachable (HTTP ${res.status})`)
+        throw new Error(data.error || `Jeeves unreachable (HTTP ${res.status})`)
       }
-      setMessages((prev) => [...prev, { role: 'lorenzo', text: data.text }])
+      setMessages((prev) => [...prev, { role: 'jeeves', text: data.text }])
     } catch (e) {
       setMessages((prev) => [...prev, {
-        role: 'lorenzo',
+        role: 'jeeves',
         text: `I had trouble reaching the network just now — ${e.message}. Try again in a moment.`,
       }])
     } finally {
@@ -554,14 +558,14 @@ export const ExpertPage = ({ prefill, onPrefillConsumed }) => {
 
   return (
     <div>
-      <PageTitle title="Ask Lorenzo" subtitle="My style advisor" />
+      <PageTitle title="Ask Jeeves" subtitle="My style advisor" />
 
       {/* Quick Actions */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
         <QuickActionTile
           icon={<MessageIcon size={22} strokeWidth={1.5} />}
           label="Ask"
-          description="Chat with Lorenzo"
+          description="Chat with Jeeves"
           onClick={() => togglePanel('ask')}
           active={activePanel === 'ask'}
         />
@@ -651,7 +655,7 @@ export const ExpertPage = ({ prefill, onPrefillConsumed }) => {
                       borderTopColor: COLORS.green, borderRadius: '50%',
                       animation: 'spin 0.8s linear infinite', display: 'inline-block',
                     }} />
-                    Lorenzo is thinking…
+                    Jeeves is thinking…
                   </div>
                 )}
                 <div ref={msgEndRef} />
@@ -704,7 +708,7 @@ export const ExpertPage = ({ prefill, onPrefillConsumed }) => {
             fontFamily: FONTS.sub, fontSize: '11px', color: COLORS.textFaint,
             textAlign: 'center', marginBottom: '14px', fontStyle: 'italic',
           }}>
-            Upload photos and Lorenzo will give you style feedback. Try:
+            Upload photos and Jeeves will give you style feedback. Try:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
             {['Full outfit photo', 'Closeup of a piece', 'Color combo check', 'Fit check', 'Inspo image for recreation'].map((tip) => (
@@ -817,7 +821,7 @@ export const ExpertPage = ({ prefill, onPrefillConsumed }) => {
               fontFamily: FONTS.sub, fontSize: '12px', color: COLORS.textFaint,
               fontStyle: 'italic', textAlign: 'center', padding: '16px 0',
             }}>
-              No previous conversations yet. Chat with Lorenzo and your history will appear here.
+              No previous conversations yet. Chat with Jeeves and your history will appear here.
             </div>
           ) : filteredHistory.length === 0 ? (
             <div style={{
@@ -1382,7 +1386,7 @@ const SkinPhotoSection = React.forwardRef((_props, ref) => {
 
 const COLOR_PALETTE_CACHE_KEY = 'garmint_color_palette_v1'
 
-// Placeholder palette/season — swapped for Lorenzo's real analysis later. Keyed on photo signature
+// Placeholder palette/season — swapped for Jeeves's real analysis later. Keyed on photo signature
 // (count for now) so it persists between renders without re-analyzing.
 const FAKE_PALETTES = [
   { season: 'Soft Autumn', undertone: 'Warm-neutral',
@@ -1396,7 +1400,7 @@ const FAKE_PALETTES = [
     avoid: ['#2F2F4F', '#808080'] },
 ]
 
-const ColorPaletteSection = ({ onChatWithLorenzo }) => {
+const ColorPaletteSection = ({ onChatWithJeeves }) => {
   // Reads stay in sync with whatever SkinPhotoSection / other devices write, via useSyncedJson.
   const [skinPhotos] = useSyncedJson(SKIN_PHOTOS_KEY, [])
   const photoCount = Array.isArray(skinPhotos) ? skinPhotos.length : 0
@@ -1466,7 +1470,7 @@ const ColorPaletteSection = ({ onChatWithLorenzo }) => {
               <div key={c} title={c} style={{ width: '36px', aspectRatio: '1/1.2', borderRadius: '6px', background: c, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} />
             ))}
           </div>
-          <button onClick={onChatWithLorenzo} style={{
+          <button onClick={onChatWithJeeves} style={{
             width: '100%', padding: '12px', background: COLORS.green, color: COLORS.cream,
             border: 'none', borderRadius: '8px',
             fontFamily: FONTS.sub, fontSize: '11.5px', fontWeight: 600,
@@ -1474,7 +1478,7 @@ const ColorPaletteSection = ({ onChatWithLorenzo }) => {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
           }}>
             <SparklesIcon size={14} strokeWidth={1.8} />
-            Chat with Lorenzo about this
+            Chat with Jeeves about this
           </button>
         </div>
       ) : null}
@@ -1714,7 +1718,7 @@ const BrandFitsSection = ({ onAddRef }) => {
     <>
       {(entries || []).length === 0 ? (
         <div className="tile" style={{ padding: '20px 16px', textAlign: 'center', color: COLORS.textFaint, fontFamily: FONTS.sub, fontSize: '12px', fontStyle: 'italic' }}>
-          Track how items fit you. Lorenzo uses this to give better recommendations.
+          Track how items fit you. Jeeves uses this to give better recommendations.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1887,12 +1891,24 @@ export const ProfilePage = ({ user, onSignOut, profilePhoto, onProfilePhotoChang
   const [addMeasOpen, setAddMeasOpen] = useState(false)
   const [newMeasLabel, setNewMeasLabel] = useState('')
   const measInputRef = useRef(null)
+  const [measDirty, setMeasDirty] = useState(false)
+  const [measSavedFlash, setMeasSavedFlash] = useState(false)
 
   // `setProfile` from useSyncedJson already saves to localStorage and Firestore.
   const save = (updated) => setProfile(updated)
 
   const updateMeasurement = (key, val) => {
     save({ ...profile, measurements: { ...profile.measurements, [key]: val } })
+    setMeasDirty(true)
+    setMeasSavedFlash(false)
+  }
+
+  const confirmMeasSave = () => {
+    // Re-save current profile to ensure Firestore sync
+    save({ ...profile })
+    setMeasDirty(false)
+    setMeasSavedFlash(true)
+    setTimeout(() => setMeasSavedFlash(false), 2000)
   }
 
   const addMeasurement = () => {
@@ -2100,6 +2116,27 @@ export const ProfilePage = ({ user, onSignOut, profilePhoto, onProfilePhotoChang
               }}><XIcon size={12} strokeWidth={2} /></button>
             </div>
           )}
+          {/* Save button */}
+          {(measDirty || measSavedFlash) && (
+            <div style={{ marginTop: '12px', textAlign: 'center' }}>
+              <button
+                onClick={confirmMeasSave}
+                disabled={measSavedFlash}
+                style={{
+                  padding: '10px 28px', borderRadius: '999px',
+                  border: 'none', cursor: measSavedFlash ? 'default' : 'pointer',
+                  background: measSavedFlash ? '#2ecc71' : COLORS.green,
+                  color: '#fff',
+                  fontFamily: FONTS.sub, fontSize: '12px', fontWeight: 700,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  transition: 'background 0.2s',
+                  boxShadow: '0 4px 14px rgba(19, 37, 27, 0.22)',
+                }}
+              >
+                {measSavedFlash ? 'Saved!' : 'Save measurements'}
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -2117,14 +2154,14 @@ export const ProfilePage = ({ user, onSignOut, profilePhoto, onProfilePhotoChang
       >Skin tone photos</SectionTitleWithAdd>
       <SkinPhotoSection ref={skinSectionRef} />
 
-      <ColorPaletteSection onChatWithLorenzo={() => {
+      <ColorPaletteSection onChatWithJeeves={() => {
         if (onSetChatPrefill) onSetChatPrefill("I just got my color palette analysis. Help me apply it — what specific pieces and brands should I look at given my season and undertone?")
         if (onNavigate) onNavigate('expert')
       }} />
 
       {/* Brand Size Fits — circular + opens closet-style modal; results show as collapsible brand groups */}
       <SectionTitleWithAdd
-        subtitle="Track how items fit you so Lorenzo can recommend better"
+        subtitle="Track how items fit you so Jeeves can recommend better"
         onAdd={() => brandFitsRef.current?.startNew()}
       >Brand size fits</SectionTitleWithAdd>
       <BrandFitsSection onAddRef={brandFitsRef} />

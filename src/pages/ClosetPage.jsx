@@ -9,6 +9,7 @@ import { uploadImageToStorage } from '../lib/sync'
 import { useSyncedJson } from '../lib/useSyncedJson'
 import { useAuth } from '../components/AuthGate'
 import { CropOverlay } from '../components/CropOverlay'
+import { useScrollGuard } from '../lib/useScrollGuard'
 
 // Upload any data-URL images to Firebase Storage; return URLs. Pass through HTTPS URLs unchanged.
 // Firestore docs cap at 1MB; multi-photo base64 blows past that, so the doc write is rejected
@@ -1094,10 +1095,12 @@ const ClosetTile = ({ item, onClick, cols, onUpdate }) => {
   const images = getImages(item)
   const displayIdx = item.displayImageIndex || 0
   const currentImg = images[displayIdx] || images[0]
+  const guard = useScrollGuard(onClick)
 
   return (
     <div
-      onClick={onClick}
+      onPointerDown={guard.onPointerDown}
+      onClick={guard.onClick}
       className="tile"
       style={{
         aspectRatio: '3/4', overflow: 'hidden', cursor: 'pointer',

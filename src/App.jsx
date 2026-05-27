@@ -204,7 +204,7 @@ function AppShell() {
     { id: 'shopping', label: 'List', icon: ShoppingBagIcon },
     { id: 'inspiration', label: 'Lookbook', icon: ImageIcon },
     { id: 'stats', label: 'Insights', icon: BarChartIcon },
-    { id: 'expert', label: 'Lorenzo', icon: SparklesIcon },
+    { id: 'expert', label: 'Jeeves', icon: SparklesIcon },
     { id: 'profile', label: 'Profile', icon: UserIcon },
   ]
 
